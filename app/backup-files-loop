@@ -1,0 +1,20 @@
+#!/bin/sh
+# Runs backup-files once a day at $BACKUP_HOUR_UTC:30 (default 03:30 UTC,
+# 15 minutes after the database backup). A failed run is logged and retried
+# the next night; it never takes the app down.
+set -u
+
+hour="${BACKUP_HOUR_UTC:-3}"
+
+if [ -z "${S3_BUCKET:-}" ]; then
+    echo "[backup-files] no backup bucket configured; nightly file backups are off"
+    exec sleep infinity
+fi
+
+while true; do
+    now=$(date -u +%s)
+    next=$(date -u -d "today ${hour}:30" +%s)
+    [ "$next" -gt "$now" ] || next=$(date -u -d "tomorrow ${hour}:30" +%s)
+    sleep $((next - now))
+    /usr/local/bin/backup-files || echo "[backup-files] backup failed; will retry tomorrow"
+done

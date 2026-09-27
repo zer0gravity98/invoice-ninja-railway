@@ -1,0 +1,39 @@
+#!/bin/sh
+# Restores a database backup made by the Backup service into the database
+# this service is connected to (DB_* variables).
+#
+#   restore-db               list available backups
+#   restore-db latest --yes  restore the newest one
+#   restore-db <key> --yes   restore a specific one
+#
+# Run it with `railway ssh` on the Invoice Ninja service. The backup must
+# come from an install with the same APP_KEY, or stored gateway, bank and
+# mail credentials can't be decrypted.
+set -eu
+
+prefix="${BACKUP_PREFIX:-invoiceninja}/db/"
+
+if [ $# -eq 0 ]; then
+    php /opt/railway/s3.php list "$prefix"
+    exit 0
+fi
+
+key="$1"
+[ "${2:-}" = --yes ] || { echo "This replaces every table in '$DB_DATABASE'. Re-run with --yes to continue." >&2; exit 1; }
+[ "$key" = latest ] && key=$(php /opt/railway/s3.php latest "$prefix")
+
+dump=$(mktemp /tmp/restore-XXXXXX.sql.gz)
+trap 'rm -f "$dump"' EXIT
+
+echo "[restore-db] downloading $key"
+php /opt/railway/s3.php get "$key" "$dump"
+gzip -t "$dump"
+
+echo "[restore-db] restoring into $DB_DATABASE on $DB_HOST"
+gunzip -c "$dump" | MYSQL_PWD="$DB_PASSWORD" mariadb -h "$DB_HOST" -P "${DB_PORT:-3306}" -u "$DB_USERNAME" "$DB_DATABASE"
+
+# A backup from an older version needs the newer migrations.
+runuser -u www-data -- php /var/www/html/artisan migrate --force
+runuser -u www-data -- php /var/www/html/artisan optimize:clear >/dev/null
+runuser -u www-data -- php /var/www/html/artisan optimize >/dev/null
+echo "[restore-db] done. Restart the service so the queue workers pick up the restored data."

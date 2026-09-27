@@ -1,0 +1,24 @@
+#!/bin/sh
+# Uploads storage/app (logos, documents, uploaded files) to the backup bucket
+# and keeps the newest $BACKUP_KEEP archives. The database is backed up by the
+# separate Backup cron service; it can't read this service's volume.
+#
+# Runs nightly from supervisord; run it by hand with `railway ssh` too.
+set -eu
+
+prefix="${BACKUP_PREFIX:-invoiceninja}/files/"
+keep="${BACKUP_KEEP:-14}"
+
+if [ -z "${S3_BUCKET:-}" ]; then
+    echo "[backup-files] S3_BUCKET is not set; skipping file backup"
+    exit 0
+fi
+
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+archive=$(mktemp /tmp/files-XXXXXX.tar.gz)
+trap 'rm -f "$archive"' EXIT
+
+tar -czf "$archive" -C /var/www/html/storage app
+php /opt/railway/s3.php put "$archive" "${prefix}invoiceninja-files-$stamp.tar.gz"
+echo "[backup-files] uploaded ${prefix}invoiceninja-files-$stamp.tar.gz ($(wc -c < "$archive") bytes)"
+php /opt/railway/s3.php prune "$prefix" "$keep"

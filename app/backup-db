@@ -1,0 +1,36 @@
+#!/bin/bash
+# Dumps the Invoice Ninja database, gzips it, uploads it to the backup bucket
+# and keeps the newest $BACKUP_KEEP dumps. Exits when done.
+#
+# This is the start command of the Backup service, which Railway runs on a
+# cron schedule. It uses this same image so the dump client and S3 client are
+# the ones restore-db uses.
+set -eu
+set -o pipefail
+
+prefix="${BACKUP_PREFIX:-invoiceninja}/db/"
+keep="${BACKUP_KEEP:-14}"
+
+for var in DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD S3_BUCKET S3_ENDPOINT S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY; do
+    eval "val=\${$var:-}"
+    [ -n "$val" ] || { echo "[backup-db] ERROR: $var is not set" >&2; exit 1; }
+done
+
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+key="${prefix}invoiceninja-db-$stamp.sql.gz"
+dump=$(mktemp /tmp/db-XXXXXX.sql.gz)
+trap 'rm -f "$dump"' EXIT
+
+echo "[backup-db] dumping $DB_DATABASE from $DB_HOST"
+MYSQL_PWD="$DB_PASSWORD" mariadb-dump \
+    -h "$DB_HOST" -P "${DB_PORT:-3306}" -u "$DB_USERNAME" \
+    --single-transaction --quick --routines --triggers --no-tablespaces \
+    "$DB_DATABASE" | gzip -6 > "$dump"
+
+# A dump that stopped early has no completion marker.
+gunzip -c "$dump" | tail -n 1 | grep -q '^-- Dump completed' \
+    || { echo "[backup-db] ERROR: dump is incomplete" >&2; exit 1; }
+
+php /opt/railway/s3.php put "$dump" "$key"
+echo "[backup-db] uploaded $key ($(wc -c < "$dump") bytes)"
+php /opt/railway/s3.php prune "$prefix" "$keep"
