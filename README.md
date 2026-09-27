@@ -73,7 +73,7 @@ On the **Pro plan** you can use SMTP for all mail by setting these variables on 
 
 Every night at **03:15 UTC** the Backup service dumps the database to the bucket, and at **03:30 UTC** the app uploads `storage/app` (logos, documents). The newest **14** of each are kept, under `invoiceninja/db/` and `invoiceninja/files/`. You can browse and download them from the bucket's **Files** tab.
 
-To take a backup right now, open the **Backup** service and click **Run now** (or redeploy it). For files, run `backup-files` in a `railway ssh` session on the Invoice Ninja service.
+To take a backup right now, before an upgrade for example, run `backup-db` and `backup-files` in a `railway ssh` session on the Invoice Ninja service. It has the same tools and credentials as the Backup service.
 
 **Restore** (from a `railway ssh` session on the Invoice Ninja service):
 
@@ -93,7 +93,9 @@ To restore into a fresh MySQL, point the Invoice Ninja service's `DB_*` variable
 
 1. Take a backup (see above).
 2. In your fork of this repo, change the tag in the `FROM invoiceninja/invoiceninja-debian:…` line of the `Dockerfile` to the new version, and add a line to `CHANGELOG.md`.
-3. Push. Railway rebuilds, and migrations run automatically on boot. If the healthcheck fails, the old version keeps serving.
+3. Push. Railway rebuilds, and migrations run automatically on boot.
+
+Because the service has a volume, Railway stops the running version before starting the new one, so there's a short outage on every deploy. If the new version fails its healthcheck, the site stays down until you fix it or redeploy the previous version from the service's **Deployments** tab. That's why step 1 matters.
 
 Invoice Ninja's built-in updater is disabled in Docker installs, so this is the way to upgrade. [docs/maintenance.md](docs/maintenance.md) has the full checklist.
 
@@ -114,7 +116,7 @@ Plan on **1 GB** of memory for light use and **2 GB** if you generate several PD
 
 | Symptom | Cause and fix |
 |---|---|
-| Deploy fails with *Healthcheck failed* | Open the Deploy Logs and find the `[railway] ERROR` line, which says what's wrong. Most often MySQL isn't up yet (the app waits 3 minutes; redeploy once MySQL is *Active*) or a `DB_*` variable was edited. |
+| Deploy fails with *Healthcheck failed* and the site shows *Application failed to respond* | Open the Deploy Logs and find the `[railway] ERROR` line, which says what's wrong. Most often MySQL isn't up yet (the app waits 3 minutes; redeploy once MySQL is *Active*) or a `DB_*` variable was edited. To get back online quickly, redeploy the last working version from the **Deployments** tab. |
 | `APP_KEY differs from the key this install was created with` | `APP_KEY` was changed. Put the original value back. Only set `ALLOW_APP_KEY_CHANGE=true` if you meant to rotate it; stored gateway and email passwords will then need re-entering. |
 | PDFs are blank, fail, or the service restarts while generating them | Chrome ran out of memory. Give the service at least 1 GB (2 GB for bursts) under **Settings → Resources**. |
 | Emails don't arrive | `MAIL_MAILER` is `log` (look for the mail in Deploy Logs), or you're using SMTP on a plan that blocks it. See [Email](#email). |
