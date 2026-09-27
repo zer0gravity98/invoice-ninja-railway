@@ -34,13 +34,25 @@ for var in DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD; do
     [ -n "$val" ] || die "$var is empty. It should reference the MySQL service, e.g. \${{MySQL.MYSQLHOST}}."
 done
 
+# Email: SMTP when a host is given, otherwise write mail to the logs so the
+# app still boots and queued emails don't fail.
+if [ -z "${MAIL_MAILER:-}" ]; then
+    if [ -n "${MAIL_HOST:-}" ]; then MAIL_MAILER=smtp; else MAIL_MAILER=log; fi
+    export MAIL_MAILER
+fi
+[ "$MAIL_MAILER" = log ] && log "MAIL_MAILER=log: emails are written to the logs, not sent. See README > Email."
+
 case "${APP_URL:-}" in
     https://?*) ;;
     *) log "WARNING: APP_URL is '${APP_URL:-}'. Links, PDFs and assets need the public https:// URL." ;;
 esac
 
 # 2. nginx listens on Railway's $PORT
-sed "s/__PORT__/$PORT/g" /opt/railway/nginx.conf.template > /etc/nginx/conf.d/invoiceninja.conf
+# (IPv6 too when the container has it: Railway's private network is IPv6.)
+listen_v6=""
+[ -f /proc/net/if_inet6 ] && listen_v6="listen [::]:$PORT default_server;"
+sed -e "s/__PORT__/$PORT/g" -e "s/__LISTEN_V6__/$listen_v6/" \
+    /opt/railway/nginx.conf.template > /etc/nginx/conf.d/invoiceninja.conf
 nginx -t -q
 
 # 3. Wait for MySQL

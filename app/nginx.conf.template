@@ -1,5 +1,6 @@
 # Rendered to /etc/nginx/conf.d/invoiceninja.conf by railway-entrypoint.sh,
-# which replaces __PORT__ with Railway's $PORT.
+# which replaces __PORT__ with Railway's $PORT and __LISTEN_V6__ with an IPv6
+# listen line when the container has IPv6.
 # Based on upstream debian/nginx/{laravel,invoiceninja}.conf.
 
 client_max_body_size 10M;
@@ -15,7 +16,7 @@ gzip_types text/plain text/css application/json application/javascript text/xml 
 
 server {
     listen __PORT__ default_server;
-    listen [::]:__PORT__ default_server;
+    __LISTEN_V6__
     server_name _;
     root /var/www/html/public;
 

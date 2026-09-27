@@ -33,7 +33,6 @@ ENV APP_ENV=production \
     CACHE_DRIVER=file \
     SESSION_DRIVER=file \
     LOG_CHANNEL=stderr \
-    MAIL_MAILER=log \
     DB_CONNECTION=mysql \
     DB_PORT=3306 \
     PORT=8080
