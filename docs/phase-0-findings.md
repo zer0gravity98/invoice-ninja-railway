@@ -38,7 +38,7 @@ Gaps we must close in our own entrypoint wrapper (which then `exec`s upstream `i
 1. **No wait for the database.** `migrate` fails immediately if MySQL isn't up yet. Because the script runs under `sh -e`, the container exits and Railway restarts it, which looks like a crash loop on first deploy. → Add a `mysqladmin ping` retry loop with a timeout.
 2. **Hard fail when the admin creds are blank.** If either `IN_USER_EMAIL` or `IN_PASSWORD` is empty on first boot, it prints "Initialization failed" and `exit 1`. → The template always supplies `IN_PASSWORD` via `${{secret()}}`, and our wrapper fails early with a clear message if the email is missing.
 3. **No HTTP server** (see §1).
-4. **Upstream `/health` is useless as a DB check.** `routes/api.php:560` returns a static `{"status":"ok"}`, is throttled to 20 req/min, and never touches the DB. → Serve our own `/railway-health` (a tiny PHP file behind nginx) that runs `SELECT 1` via PDO and returns 503 on failure.
+4. **Upstream `/health` is useless as a DB check.** `routes/api.php:560` returns a static `{"status":"ok"}`, is throttled to 20 req/min, and never touches the DB. → Serve our own `/railway_health` (a tiny PHP file behind nginx) that runs `SELECT 1` via PDO and returns 503 on failure.
 5. The recursive `chown`/`chmod` over `storage/` runs on every boot and will get slower as uploads grow. It's acceptable for now; revisit if boot time becomes a problem.
 
 ## 3. Environment variables
@@ -92,7 +92,7 @@ Gaps we must close in our own entrypoint wrapper (which then `exec`s upstream `i
 │  FROM invoiceninja/invoiceninja-debian:5.13.43                    │
 │  supervisord: nginx(:$PORT) · php-fpm(:9000) · queue ×2 · schedule│
 │  entrypoint: wait-for-db → upstream init.sh (migrate, seed admin) │
-│  healthcheck: /railway-health  (PDO SELECT 1 → 200/503)           │
+│  healthcheck: /railway_health  (PDO SELECT 1 → 200/503)           │
 │  volume: /var/www/html/storage                                    │
 └───────────────┬───────────────────────────────────────────────────┘
                 │ private network (${{MySQL.*}} refs)

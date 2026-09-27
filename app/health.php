@@ -1,6 +1,6 @@
 <?php
 
-// Railway deploy healthcheck, served at /railway-health.
+// Railway deploy healthcheck, served at /railway_health.
 //
 // Upstream's /health route returns a static "ok" without touching the
 // database, so a deploy with a broken DB connection would still go live.
@@ -28,7 +28,7 @@ try {
     echo json_encode(['status' => 'ok']);
 } catch (Throwable $e) {
     // Only the exception class: messages can contain hostnames or usernames.
-    error_log('railway-health: '.get_class($e));
+    error_log('railway_health: '.get_class($e));
     http_response_code(503);
     echo json_encode(['status' => 'error', 'error' => get_class($e)]);
 }

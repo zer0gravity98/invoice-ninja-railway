@@ -30,7 +30,7 @@ server {
     charset utf-8;
 
     # Deploy healthcheck: boots Laravel and queries MySQL (see health.php).
-    location = /railway-health {
+    location = /railway_health {
         access_log off;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME /opt/railway/health.php;
