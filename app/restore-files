@@ -1,0 +1,27 @@
+#!/bin/sh
+# Restores an uploaded-files backup made by backup-files into storage/app.
+#
+#   restore-files               list available backups
+#   restore-files latest --yes  restore the newest one
+#   restore-files <key> --yes   restore a specific one
+set -eu
+
+prefix="${BACKUP_PREFIX:-invoiceninja}/files/"
+
+if [ $# -eq 0 ]; then
+    php /opt/railway/s3.php list "$prefix"
+    exit 0
+fi
+
+key="$1"
+[ "${2:-}" = --yes ] || { echo "This overwrites files in storage/app. Re-run with --yes to continue." >&2; exit 1; }
+[ "$key" = latest ] && key=$(php /opt/railway/s3.php latest "$prefix")
+
+archive=$(mktemp /tmp/restore-XXXXXX.tar.gz)
+trap 'rm -f "$archive"' EXIT
+
+echo "[restore-files] downloading $key"
+php /opt/railway/s3.php get "$key" "$archive"
+tar -xzf "$archive" -C /var/www/html/storage
+chown -R www-data:www-data /var/www/html/storage/app
+echo "[restore-files] done"

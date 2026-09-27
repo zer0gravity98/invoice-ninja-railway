@@ -1,0 +1,58 @@
+# Rendered to /etc/nginx/conf.d/invoiceninja.conf by railway-entrypoint.sh,
+# which replaces __PORT__ with Railway's $PORT and __LISTEN_V6__ with an IPv6
+# listen line when the container has IPv6.
+# Based on upstream debian/nginx/{laravel,invoiceninja}.conf.
+
+client_max_body_size 10M;
+client_body_buffer_size 10M;
+server_tokens off;
+fastcgi_buffers 32 16K;
+
+gzip on;
+gzip_comp_level 2;
+gzip_min_length 1000;
+gzip_proxied any;
+gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
+
+server {
+    listen __PORT__ default_server;
+    __LISTEN_V6__
+    server_name _;
+    root /var/www/html/public;
+
+    access_log /dev/stdout;
+    error_log /dev/stderr warn;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    index index.php;
+    charset utf-8;
+
+    # Deploy healthcheck: boots Laravel and queries MySQL (see health.php).
+    location = /railway_health {
+        access_log off;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME /opt/railway/health.php;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
