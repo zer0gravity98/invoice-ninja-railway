@@ -2,6 +2,8 @@
 
 Everything to enter in the Railway template composer (Workspace → Templates → New, or **Generate Template from Project** on a working test project). Railway's `railway.json` config-as-code is deprecated and stops being read on 2026-12-01, so these settings live in the template itself.
 
+**If you use Generate Template from Project**, check every service's variables in the template editor afterwards. Railway copies the test project's literal values, including a test `APP_KEY` and `IN_PASSWORD` that must be replaced with the `secret()` functions below. It also blanks plain values and marks them required: on 2026-09-27 it blanked `PORT`, `BACKUP_KEEP`, `MYSQLPORT`, `MYSQLUSER` and `MYSQL_DATABASE`. Put them back (`8080`, `14`, `3306`, `root`, `railway`) so the deploy page asks only for `IN_USER_EMAIL`. Also delete any test-only variables.
+
 Template variable functions: `${{secret(n, alphabet)}}` is evaluated **once, when a user deploys** the template, and stored as an ordinary variable ([docs](https://docs.railway.com/templates/create#template-variable-functions)). That's what keeps `APP_KEY` stable across restarts.
 
 ## Services
