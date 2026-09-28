@@ -1,5 +1,7 @@
 # Invoice Ninja on Railway
 
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/invoice-ninja-1)
+
 One-click [Invoice Ninja](https://invoiceninja.com) v5: a free, self-hosted alternative to FreshBooks and QuickBooks for invoices, quotes, payments, expenses and time tracking. Enter your email, click Deploy, and log in about two minutes later. Working PDFs, a running queue and nightly backups are included.
 
 **Pinned version:** Invoice Ninja **5.13.43** (`invoiceninja/invoiceninja-debian:5.13.43`). See [CHANGELOG.md](CHANGELOG.md).
@@ -32,7 +34,7 @@ There's no Redis. The database queue survives restarts and is one less service t
 
 ## Quick start
 
-1. Click **Deploy**, enter the email you want to log in with (`IN_USER_EMAIL`), and deploy.
+1. Click **Deploy on Railway** above (or open [the template](https://railway.com/deploy/invoice-ninja-1)), enter the email you want to log in with (`IN_USER_EMAIL`), and deploy.
 2. Wait until the **Invoice Ninja** service shows *Active*. First boot creates the database tables and your account, which takes a minute or two.
 3. Open the service's URL and log in with your email and the generated password (see below).
 
